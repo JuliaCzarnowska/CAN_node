@@ -101,7 +101,6 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef *CanHandle)
 
 void UART_TO_CAN_Transfer()
 {
-	if(uartRxMsg[1] == BYTE_COUNT){HAL_GPIO_WritePin( LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);}
 	hcan.pTxMsg->DLC = uartRxMsg[1];
 	for(int i = 0; i < hcan.pTxMsg->DLC; i++)
 	{
@@ -113,6 +112,7 @@ void UART_TO_CAN_Transfer()
 	id[2] = (unsigned int) ((uartRxMsg[13] << 8) & 0xFF00);
 	id[3] = (unsigned int) (uartRxMsg[14] & 0xFF);
 	hcan.pTxMsg->ExtId = id[0]|id[1]|id[2]|id[3];
+	if(hcan.pTxMsg->ExtId == 0x82501C0){HAL_GPIO_WritePin( LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);}
 
 }
 /* USER CODE END 0 */
