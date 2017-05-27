@@ -40,7 +40,6 @@
 
 /* Private variables ---------------------------------------------------------*/
 CAN_HandleTypeDef hcan;
-
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
@@ -63,14 +62,18 @@ void CAN_TO_UART_Transfer();
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef * huart)
 {
-
+//	HAL_GPIO_WritePin( LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 	if(uartRxMsg[0] == ARINC_MSG){
 		UART_TO_CAN_Transfer();
-
+		if(HAL_CAN_Transmit(&hcan, 10) != HAL_OK)
+		{
+			HAL_GPIO_WritePin( LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+		    /* Reception Error */
+		    Error_Handler();
+		}
 	}else if(uartRxMsg[0] == CTRL_MSG){
 		HAL_UART_Transmit(&huart2, (uint8_t*) &uartTxMsg, 15, 100);
 		HAL_UART_Transmit(&huart2, (uint8_t*) &uartTxMsg, 15, 100);
-
 	}
 
 	HAL_UART_Receive_IT(&huart2, uartRxMsg, MSG_PKT_SIZE);
@@ -79,15 +82,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef * huart)
 
 void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef *CanHandle)
 {
-  if ((CanHandle->pRxMsg->StdId == 0x321) && (CanHandle->pRxMsg->IDE == CAN_ID_STD) && (CanHandle->pRxMsg->DLC == 2))
-  {
-	  uartRxMsg[0] = CanHandle->pRxMsg->Data[0];
-	  uartRxMsg[1] = CanHandle->pRxMsg->Data[1];
-      HAL_UART_Transmit(&huart2, (uint8_t*) &(uartRxMsg), 2, 100);
-  }
+	HAL_GPIO_WritePin( LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+	CAN_TO_UART_Transfer();
+	HAL_UART_Transmit(&huart2, (uint8_t*) &uartTxMsg, 15, 100);
 
   /* Receive */
-  if (HAL_CAN_Receive_IT(CanHandle, CAN_FIFO0) != HAL_OK)
+  if (HAL_CAN_Receive_IT(CanHandle, 10) != HAL_OK)
   {
     /* Reception Error */
     Error_Handler();
@@ -112,8 +112,22 @@ void UART_TO_CAN_Transfer()
 	id[2] = (unsigned int) ((uartRxMsg[13] << 8) & 0xFF00);
 	id[3] = (unsigned int) (uartRxMsg[14] & 0xFF);
 	hcan.pTxMsg->ExtId = id[0]|id[1]|id[2]|id[3];
-	if(hcan.pTxMsg->ExtId == 0x82501C0){HAL_GPIO_WritePin( LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);}
+}
 
+void CAN_TO_UART_Transfer()
+{
+	uartTxMsg[0] = hcan.pRxMsg->DLC;
+	for(int i = 0; i < hcan.pRxMsg->DLC; i++)
+	{
+		uartTxMsg[i+1] = hcan.pRxMsg->Data[i+1];
+	}
+	uartTxMsg[9] = DATA_FRAME;
+	uartTxMsg[10] = (unsigned char) ((hcan.pRxMsg->ExtId >> 24) & 0xFF);
+	uartTxMsg[11] = (unsigned char) ((hcan.pRxMsg->ExtId >> 16) & 0xFF);
+	uartTxMsg[12] = (unsigned char) ((hcan.pRxMsg->ExtId >> 8) & 0xFF);
+	uartTxMsg[13] = (unsigned char) ((hcan.pRxMsg->ExtId) & 0xFF);
+	uartTxMsg[14] = ARINC_MSG;
+//	if(hcan.pRxMsg->ExtId == 0x82501C0){HAL_GPIO_WritePin( LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);}
 }
 /* USER CODE END 0 */
 
@@ -142,7 +156,7 @@ int main(void)
 
   //start listening for uart messages
   HAL_UART_Receive_IT(&huart2, uartRxMsg, 15);
-
+  HAL_CAN_Receive_IT(&hcan, CAN_FIFO0);
 
   //creating an UART message
 
@@ -250,7 +264,7 @@ void SystemClock_Config(void)
 /* CAN init function */
 static void MX_CAN_Init(void)
 {
-  CAN_FilterConfTypeDef  sFilterConfig;
+  CAN_FilterConfTypeDef  		sFilterConfig;
   static CanTxMsgTypeDef        TxMessage;
   static CanRxMsgTypeDef        RxMessage;
 
@@ -272,6 +286,7 @@ static void MX_CAN_Init(void)
   hcan.Init.TXFP = DISABLE;
   if (HAL_CAN_Init(&hcan) != HAL_OK)
   {
+
     Error_Handler();
   }
 
@@ -299,6 +314,7 @@ static void MX_CAN_Init(void)
   hcan.pTxMsg->RTR = CAN_RTR_DATA;
   hcan.pTxMsg->IDE = CAN_ID_EXT;
   hcan.pTxMsg->DLC = 8;
+
 
 }
 
@@ -357,7 +373,7 @@ static void MX_GPIO_Init(void)
   * @retval None
   */
 void Error_Handler(void)
-{
+{HAL_GPIO_WritePin( LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
   /* USER CODE BEGIN Error_Handler */
   /* User can add his own implementation to report the HAL error return state */
   while(1) 

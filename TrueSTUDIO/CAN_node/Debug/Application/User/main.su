@@ -1,6 +1,7 @@
-main.c:80:6:HAL_CAN_RxCpltCallback	8	static
-main.c:102:6:UART_TO_CAN_Transfer	8	static
-main.c:64:6:HAL_UART_RxCpltCallback	8	static
-main.c:205:6:SystemClock_Config	72	static
-main.c:120:5:main	56	static
-main.c:359:6:Error_Handler	0	static
+main.c:102:6:UART_TO_CAN_Transfer	12	static
+main.c:117:6:CAN_TO_UART_Transfer	12	static
+main.c:375:6:Error_Handler	8	static
+main.c:63:6:HAL_UART_RxCpltCallback	8	static
+main.c:83:6:HAL_CAN_RxCpltCallback	8	static
+main.c:219:6:SystemClock_Config	72	static
+main.c:134:5:main	56	static
